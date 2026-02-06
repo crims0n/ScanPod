@@ -4,4 +4,4 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - SCANAPI_API_KEY=${SCANAPI_API_KEY:-}
+      - SCANAPI_API_KEY=${SCANAPI_API_KEY:-changeme}
