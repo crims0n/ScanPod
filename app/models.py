@@ -45,6 +45,11 @@ class JobStatus(str, Enum):
     failed = "failed"
 
 
+class ScanJobSummary(BaseModel):
+    job_id: str
+    status: JobStatus
+
+
 class ScanJobCreated(BaseModel):
     job_id: str
     status: JobStatus

@@ -91,7 +91,7 @@ GET /scans
 X-API-Key: changeme
 ```
 
-Returns `200` with a list of all jobs.
+Returns `200` with a summary list of all jobs (job ID and status only). Use `GET /scans/{job_id}` for full details.
 
 ## Architecture
 

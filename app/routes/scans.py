@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import require_api_key
-from app.models import ScanJobCreated, ScanJobStatus, ScanRequest, new_job
+from app.models import ScanJobCreated, ScanJobStatus, ScanJobSummary, ScanRequest, new_job
 from app.scanner import submit_scan
 from app.store import job_store
 
@@ -34,6 +34,9 @@ async def get_scan(job_id: str) -> ScanJobStatus:
     return job
 
 
-@router.get("", response_model=list[ScanJobStatus])
-async def list_scans() -> list[ScanJobStatus]:
-    return job_store.list_all()
+@router.get("", response_model=list[ScanJobSummary])
+async def list_scans() -> list[ScanJobSummary]:
+    return [
+        ScanJobSummary(job_id=job.job_id, status=job.status)
+        for job in job_store.list_all()
+    ]
