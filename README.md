@@ -1,7 +1,7 @@
 <p align="center">
-<img src="images/scanpod-logo.png" style="width: 25%;" /></p>
+<img src="images/scanpod-logo.png" style="width: 33%;" /></p>
 
-ScanPod is a containerized FastAPI service for distributed Nmap orchestration. Submit scan jobs, let them run in the background, and poll for results. ScanPod will organize and track jobs, storing them in memory.  
+ScanPod is a containerized FastAPI service for distributed Nmap orchestration. Submit scan jobs, let them run async in the background, and poll for results. ScanPod will organize and track jobs, and retain results in memory.  
 
 <p align="center">
 <img src="images/demo.gif" /></p>
