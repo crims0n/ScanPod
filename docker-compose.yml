@@ -1,7 +1,9 @@
+name: scanpod
+
 services:
-  agent:
+  scanpod:
     build: .
     ports:
       - "8001:8001"
     environment:
-      - SCANAPI_API_KEY=${SCANAPI_API_KEY:-changeme}
+      - SCANPOD_API_KEY=${SCANPOD_API_KEY:-changeme}

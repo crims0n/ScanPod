@@ -1,4 +1,4 @@
-# pyscanapi-agent
+# ScanPod
 
 A FastAPI-based network scanning agent that wraps `nmap` behind a REST API. Submit scan jobs, let them run in the background, and poll for results.
 
@@ -15,13 +15,13 @@ pip install -e ".[dev]"
 
 ## Configuration
 
-Set environment variables with the `SCANAPI_` prefix, or create a `.env` file (see `.env.example`):
+Set environment variables with the `SCANPOD_` prefix, or create a `.env` file (see `.env.example`):
 
 | Variable                  | Default    | Description                        |
 |---------------------------|------------|------------------------------------|
-| `SCANAPI_API_KEY`         | `changeme` | API key for `X-API-Key` header     |
-| `SCANAPI_SCAN_TIMEOUT`    | `300`      | nmap scan timeout in seconds       |
-| `SCANAPI_MAX_SCAN_WORKERS`| `4`        | Max concurrent background scans    |
+| `SCANPOD_API_KEY`         | `changeme` | API key for `X-API-Key` header     |
+| `SCANPOD_SCAN_TIMEOUT`    | `300`      | nmap scan timeout in seconds       |
+| `SCANPOD_MAX_SCAN_WORKERS`| `4`        | Max concurrent background scans    |
 
 ## Running
 
@@ -100,7 +100,7 @@ The client submits a scan, gets a job ID immediately, and polls for results whil
 | Module | Purpose |
 |---|---|
 | `app/main.py` | FastAPI entry point; mounts the scans router and exposes `/health` |
-| `app/config.py` | Pydantic `Settings` class reading `SCANAPI_`-prefixed env vars |
+| `app/config.py` | Pydantic `Settings` class reading `SCANPOD_`-prefixed env vars |
 | `app/auth.py` | `require_api_key()` dependency that validates the `X-API-Key` header |
 | `app/models.py` | Pydantic schemas for requests, results, and job status (pending, running, completed, failed) |
 | `app/store.py` | Thread-safe in-memory `JobStore` backed by a dict and threading lock |

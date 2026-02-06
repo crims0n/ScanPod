@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "SCANAPI_"}
+    model_config = {"env_prefix": "SCANPOD_"}
 
     api_key: str = "changeme"
     scan_timeout: int = 300
