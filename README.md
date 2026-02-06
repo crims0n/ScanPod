@@ -29,6 +29,14 @@ Set environment variables with the `SCANAPI_` prefix, or create a `.env` file (s
 uvicorn app.main:app --reload
 ```
 
+### Docker
+
+```bash
+docker compose up -d
+```
+
+The container bundles `nmap` and runs as a non-root user. Configure via environment variables in `docker-compose.yml` or a `.env` file.
+
 ## API
 
 All `/scans` endpoints require an `X-API-Key` header.
