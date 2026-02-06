@@ -93,6 +93,20 @@ X-API-Key: changeme
 
 Returns `200` with a list of all jobs.
 
+## Architecture
+
+The client submits a scan, gets a job ID immediately, and polls for results while nmap runs in a background thread.
+
+| Module | Purpose |
+|---|---|
+| `app/main.py` | FastAPI entry point; mounts the scans router and exposes `/health` |
+| `app/config.py` | Pydantic `Settings` class reading `SCANAPI_`-prefixed env vars |
+| `app/auth.py` | `require_api_key()` dependency that validates the `X-API-Key` header |
+| `app/models.py` | Pydantic schemas for requests, results, and job status (pending, running, completed, failed) |
+| `app/store.py` | Thread-safe in-memory `JobStore` backed by a dict and threading lock |
+| `app/scanner.py` | Core engine; runs blocking `python-nmap` scans in a `ThreadPoolExecutor` |
+| `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, and `GET /scans` endpoints |
+
 ## Testing
 
 ```bash
