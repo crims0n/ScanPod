@@ -1,11 +1,21 @@
 <p align="center">
 <img src="images/scanpod-logo.png" style="width: 25%;" /></p>
-ScanPod is a containerized FastAPI service for distributed Nmap orchestration. Submit scan jobs, let them run in the background, and poll for results.
+
+ScanPod is a containerized FastAPI service for distributed Nmap orchestration. Submit scan jobs, let them run in the background, and poll for results. ScanPod will organize and track jobs, storing them in memory.  
+
+<p align="center">
+<img src="images/demo.gif" /></p>
 
 ## Requirements
 
 - Python 3.11+
 - [nmap](https://nmap.org/) installed and available on `PATH`
+
+## Security
+
+**IMPORTANT!** 
+
+At the moment, https is not supported. **DO NOT** deploy these agents on the public internet. Although the endpoint supports API authentication, without https the data is sent in cleartext and potentially interceptable.
 
 ## Installation
 
