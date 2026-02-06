@@ -9,3 +9,4 @@ build/
 .venv/
 .claude/
 curl-examples.md
+.DS_Store
