@@ -1,6 +1,6 @@
 # ScanPod
 
-A FastAPI-based network scanning agent that wraps `nmap` behind a REST API. Submit scan jobs, let them run in the background, and poll for results.
+ScanPod is a containerized FastAPI service for distributed Nmap orchestration. Submit scan jobs, let them run in the background, and poll for results.
 
 ## Requirements
 
