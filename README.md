@@ -105,6 +105,17 @@ X-API-Key: changeme
 
 Returns `200` with a summary list of all jobs (job ID and status only). Use `GET /scans/{job_id}` for full details.
 
+## Logging
+
+ScanPod emits structured log lines to stdout by default. Key events logged include scan creation, scan completion, and failed authentication attempts.
+
+To also write logs to a file, set `SCANPOD_LOG_FILE` to a path. The file will automatically rotate at 5 MB with 3 backups kept.
+
+```bash
+# Write logs to a file and increase verbosity
+SCANPOD_LOG_LEVEL=DEBUG SCANPOD_LOG_FILE=/var/log/scanpod.log uvicorn app.main:app
+```
+
 ## Architecture
 
 The client submits a scan, gets a job ID immediately, and polls for results while nmap runs in a background thread.
