@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     api_key: str = "changeme"
     scan_timeout: int = 300
     max_scan_workers: int = 4
+    log_level: str = "INFO"
+    log_file: str = ""
 
 
 settings = Settings()

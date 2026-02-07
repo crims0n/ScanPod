@@ -24,6 +24,7 @@ _executor = ThreadPoolExecutor(max_workers=settings.max_scan_workers)
 
 def _run_scan(job: ScanJobStatus) -> None:
     """Execute an nmap scan synchronously (called from thread pool)."""
+    logger.info("Scan job %s running: targets=%s", job.job_id, job.request.targets)
     job = job.model_copy(
         update={
             "status": JobStatus.running,
@@ -71,6 +72,7 @@ def _run_scan(job: ScanJobStatus) -> None:
             command_line=nm.command_line(),
         )
 
+        logger.info("Scan job %s completed — %d host(s) found", job.job_id, len(hosts))
         job = job.model_copy(
             update={
                 "status": JobStatus.completed,

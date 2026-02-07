@@ -32,6 +32,8 @@ Set environment variables with the `SCANPOD_` prefix, or create a `.env` file (s
 | `SCANPOD_API_KEY`         | `changeme` | API key for `X-API-Key` header     |
 | `SCANPOD_SCAN_TIMEOUT`    | `300`      | nmap scan timeout in seconds       |
 | `SCANPOD_MAX_SCAN_WORKERS`| `4`        | Max concurrent background scans    |
+| `SCANPOD_LOG_LEVEL`       | `INFO`     | Python log level (DEBUG, INFO, WARNING, etc.) |
+| `SCANPOD_LOG_FILE`        | _(empty)_  | Path to log file; empty = stdout only |
 
 ## Running
 
