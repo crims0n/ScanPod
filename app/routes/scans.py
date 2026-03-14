@@ -61,7 +61,7 @@ async def cancel_scan(job_id: str) -> ScanJobStatus:
     if cancelled is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Job cannot be cancelled in status '{job.status}'",
+            detail="Job is already cancelled",
         )
     logger.info("Scan job %s cancelled", job_id)
     return cancelled

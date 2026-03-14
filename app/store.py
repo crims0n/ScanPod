@@ -30,16 +30,20 @@ class JobStore:
             return True
 
     def cancel(self, job_id: str) -> Optional[ScanJobStatus]:
-        """Mark a pending or running job as cancelled. Returns the updated job, or None if not found or already terminal."""
+        """Mark a job as cancelled. Returns the updated job, or None if not found or already cancelled.
+
+        Works for any non-cancelled status. Results are cleared when cancelling a completed job.
+        """
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
                 return None
-            if job.status not in (JobStatus.pending, JobStatus.running):
+            if job.status == JobStatus.cancelled:
                 return None
             cancelled = job.model_copy(
                 update={
                     "status": JobStatus.cancelled,
+                    "result": None,
                     "completed_at": datetime.now(timezone.utc),
                 }
             )
