@@ -105,6 +105,95 @@ X-API-Key: changeme
 
 Returns `200` with a summary list of all jobs (job ID and status only). Use `GET /scans/{job_id}` for full details.
 
+### Cancel a scan
+
+```
+POST /scans/{job_id}/cancel
+X-API-Key: changeme
+```
+
+Returns `200` with the updated job (status `cancelled`). Returns `404` if the job doesn't exist, or `409` if the job is already in a terminal state (`completed`, `failed`, or `cancelled`).
+
+Cancellation is best-effort for running jobs — nmap is a blocking call and cannot be interrupted mid-scan. If a scan is in progress, the result will be discarded once nmap returns and the job will be marked `cancelled`.
+
+### Delete a scan
+
+```
+DELETE /scans/{job_id}
+X-API-Key: changeme
+```
+
+Returns `204` on success. Returns `404` if the job doesn't exist, or `409` if the job is still active (`pending` or `running`) — cancel it first.
+
+## curl Examples
+
+All examples assume the service is running at `http://localhost:8000` with the default API key.
+
+### Health check
+
+```bash
+curl http://localhost:8000/health
+```
+
+### Create a scan
+
+```bash
+curl -s -X POST http://localhost:8000/scans \
+  -H "X-API-Key: changeme" \
+  -H "Content-Type: application/json" \
+  -d '{"targets": "192.168.1.0/24", "ports": "22,80,443", "arguments": "-sV"}'
+```
+
+### Get scan status / results
+
+```bash
+curl -s http://localhost:8000/scans/<job_id> \
+  -H "X-API-Key: changeme"
+```
+
+### List all scans
+
+```bash
+curl -s http://localhost:8000/scans \
+  -H "X-API-Key: changeme"
+```
+
+### Cancel a scan
+
+```bash
+curl -s -X POST http://localhost:8000/scans/<job_id>/cancel \
+  -H "X-API-Key: changeme"
+```
+
+### Delete a scan
+
+```bash
+curl -s -X DELETE http://localhost:8000/scans/<job_id> \
+  -H "X-API-Key: changeme"
+```
+
+### Poll until complete, then delete
+
+```bash
+JOB_ID=$(curl -s -X POST http://localhost:8000/scans \
+  -H "X-API-Key: changeme" \
+  -H "Content-Type: application/json" \
+  -d '{"targets": "192.168.1.1"}' | jq -r .job_id)
+
+# Poll until done
+while true; do
+  STATUS=$(curl -s http://localhost:8000/scans/$JOB_ID \
+    -H "X-API-Key: changeme" | jq -r .status)
+  echo "Status: $STATUS"
+  [[ "$STATUS" == "completed" || "$STATUS" == "failed" || "$STATUS" == "cancelled" ]] && break
+  sleep 5
+done
+
+# Delete the job
+curl -s -X DELETE http://localhost:8000/scans/$JOB_ID \
+  -H "X-API-Key: changeme"
+```
+
 ## Logging
 
 ScanPod emits structured log lines to stdout by default. Key events logged include scan creation, scan completion, and failed authentication attempts.
@@ -125,10 +214,10 @@ The client submits a scan, gets a job ID immediately, and polls for results whil
 | `app/main.py` | FastAPI entry point; mounts the scans router and exposes `/health` |
 | `app/config.py` | Pydantic `Settings` class reading `SCANPOD_`-prefixed env vars |
 | `app/auth.py` | `require_api_key()` dependency that validates the `X-API-Key` header |
-| `app/models.py` | Pydantic schemas for requests, results, and job status (pending, running, completed, failed) |
+| `app/models.py` | Pydantic schemas for requests, results, and job status (pending, running, completed, failed, cancelled) |
 | `app/store.py` | Thread-safe in-memory `JobStore` backed by a dict and threading lock |
 | `app/scanner.py` | Core engine; runs blocking `python-nmap` scans in a `ThreadPoolExecutor` |
-| `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, and `GET /scans` endpoints |
+| `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, `GET /scans`, `POST /scans/{job_id}/cancel`, `DELETE /scans/{job_id}` endpoints |
 
 ## Testing
 

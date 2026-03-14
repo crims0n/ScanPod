@@ -46,3 +46,39 @@ async def list_scans() -> list[ScanJobSummary]:
         ScanJobSummary(job_id=job.job_id, status=job.status)
         for job in job_store.list_all()
     ]
+
+
+@router.post("/{job_id}/cancel", response_model=ScanJobStatus)
+async def cancel_scan(job_id: str) -> ScanJobStatus:
+    job = job_store.get(job_id)
+    if job is None:
+        logger.warning("Cancel requested for unknown job %s", job_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+    cancelled = job_store.cancel(job_id)
+    if cancelled is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Job cannot be cancelled in status '{job.status}'",
+        )
+    logger.info("Scan job %s cancelled", job_id)
+    return cancelled
+
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_scan(job_id: str) -> None:
+    job = job_store.get(job_id)
+    if job is None:
+        logger.warning("Delete requested for unknown job %s", job_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+    if not job_store.remove(job_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Job cannot be deleted in status '{job.status}' — cancel it first",
+        )
+    logger.info("Scan job %s deleted", job_id)

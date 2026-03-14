@@ -24,6 +24,12 @@ _executor = ThreadPoolExecutor(max_workers=settings.max_scan_workers)
 
 def _run_scan(job: ScanJobStatus) -> None:
     """Execute an nmap scan synchronously (called from thread pool)."""
+    # Job may have been cancelled before the executor picked it up.
+    current = job_store.get(job.job_id)
+    if current is not None and current.status == JobStatus.cancelled:
+        logger.info("Scan job %s was cancelled before starting", job.job_id)
+        return
+
     logger.info("Scan job %s running: targets=%s", job.job_id, job.request.targets)
     job = job.model_copy(
         update={
@@ -31,7 +37,9 @@ def _run_scan(job: ScanJobStatus) -> None:
             "started_at": datetime.now(timezone.utc),
         }
     )
-    job_store.update(job)
+    if not job_store.update(job):
+        logger.info("Scan job %s was cancelled, aborting", job.job_id)
+        return
 
     try:
         nm = nmap.PortScanner()
@@ -44,6 +52,12 @@ def _run_scan(job: ScanJobStatus) -> None:
             timeout=settings.scan_timeout,
             **kwargs,
         )
+
+        # nmap is blocking — check for cancellation before storing the result.
+        current = job_store.get(job.job_id)
+        if current is not None and current.status == JobStatus.cancelled:
+            logger.info("Scan job %s was cancelled, discarding result", job.job_id)
+            return
 
         hosts: list[HostResult] = []
         for host in nm.all_hosts():
