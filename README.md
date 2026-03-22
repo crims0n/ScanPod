@@ -195,6 +195,20 @@ curl -s -X DELETE http://localhost:8000/scans/$JOB_ID \
   -H "X-API-Key: changeme"
 ```
 
+## Scan Concurrency
+
+`SCANPOD_MAX_SCAN_WORKERS` (default: `4`) controls how many scans run simultaneously. Additional submissions queue as `pending` and execute as workers free up.
+
+**4 concurrent scans is a reasonable default**, but the practical ceiling depends on your scan profile:
+
+- **Light scans** (small targets, few ports): 4–8 workers is fine.
+- **Heavy scans** (`-sV`, large CIDRs, `-p-`): consider dropping to 2 — multiple aggressive nmap processes compete for CPU and network bandwidth and can saturate a NIC or trigger rate limiting on target networks.
+
+A few other things to be aware of as load increases:
+
+- **File descriptors**: each nmap subprocess opens raw sockets. Default OS limits (256 on macOS, 1024 on Linux) can become tight with wide port scans across several workers.
+- **Memory**: completed job results are retained in memory indefinitely with no eviction or TTL. On long-running deployments with large scan results, heap usage will grow unbounded until the process is restarted.
+
 ## Logging
 
 ScanPod emits structured log lines to stdout by default. Key events logged include scan creation, scan completion, and failed authentication attempts.
