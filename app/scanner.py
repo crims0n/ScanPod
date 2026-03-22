@@ -49,7 +49,7 @@ def _run_scan(job: ScanJobStatus) -> None:
 
         nm.scan(
             hosts=job.request.targets,
-            timeout=settings.scan_timeout,
+            timeout=job.request.timeout if job.request.timeout is not None else settings.scan_timeout,
             **kwargs,
         )
 

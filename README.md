@@ -30,7 +30,7 @@ Set environment variables with the `SCANPOD_` prefix, or create a `.env` file (s
 | Variable                  | Default    | Description                        |
 |---------------------------|------------|------------------------------------|
 | `SCANPOD_API_KEY`         | `changeme` | API key for `X-API-Key` header     |
-| `SCANPOD_SCAN_TIMEOUT`    | `300`      | nmap scan timeout in seconds       |
+| `SCANPOD_SCAN_TIMEOUT`    | `900`      | nmap scan timeout in seconds (server-wide default) |
 | `SCANPOD_MAX_SCAN_WORKERS`| `4`        | Max concurrent background scans    |
 | `SCANPOD_LOG_LEVEL`       | `INFO`     | Python log level (DEBUG, INFO, WARNING, etc.) |
 | `SCANPOD_LOG_FILE`        | _(empty)_  | Path to log file; empty = stdout only |
@@ -71,7 +71,8 @@ X-API-Key: changeme
 {
   "targets": "192.168.1.0/24",
   "ports": "22,80,443",
-  "arguments": "-sV"
+  "arguments": "-sV",
+  "timeout": 120
 }
 ```
 
@@ -85,7 +86,7 @@ Returns `202` with a job ID:
 }
 ```
 
-`ports` and `arguments` are optional.
+`ports`, `arguments`, and `timeout` are optional. `timeout` overrides `SCANPOD_SCAN_TIMEOUT` for that specific scan.
 
 ### Get scan status
 
@@ -141,7 +142,7 @@ curl http://localhost:8000/health
 curl -s -X POST http://localhost:8000/scans \
   -H "X-API-Key: changeme" \
   -H "Content-Type: application/json" \
-  -d '{"targets": "192.168.1.0/24", "ports": "22,80,443", "arguments": "-sV"}'
+  -d '{"targets": "192.168.1.0/24", "ports": "22,80,443", "arguments": "-sV", "timeout": 120}'
 ```
 
 ### Get scan status / results

@@ -14,6 +14,7 @@ class ScanRequest(BaseModel):
     targets: str
     ports: Optional[str] = None
     arguments: Optional[str] = None
+    timeout: Optional[int] = None
 
 
 # --- Result hierarchy ---
