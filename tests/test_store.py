@@ -70,6 +70,26 @@ def test_ttl_zero_disables_eviction(monkeypatch):
     assert s.get(old.job_id) is not None
 
 
+def test_clear_terminal_removes_only_finished(monkeypatch):
+    monkeypatch.setattr(store_module.settings, "max_jobs", 0)
+    monkeypatch.setattr(store_module.settings, "job_ttl_seconds", 0)
+    s = JobStore()
+    now = datetime.now(timezone.utc)
+    pending = _job(JobStatus.pending)
+    running = _job(JobStatus.running)
+    completed = _job(JobStatus.completed, completed_at=now)
+    failed = _job(JobStatus.failed, completed_at=now)
+    cancelled = _job(JobStatus.cancelled, completed_at=now)
+    for j in (pending, running, completed, failed, cancelled):
+        s.add(j)
+
+    assert s.clear_terminal() == 3
+    remaining = {j.job_id for j in s.list_all()}
+    assert remaining == {pending.job_id, running.job_id}
+    # Idempotent — nothing terminal left to remove.
+    assert s.clear_terminal() == 0
+
+
 def test_cap_frees_space_after_ttl_sweep(monkeypatch):
     monkeypatch.setattr(store_module.settings, "max_jobs", 1)
     monkeypatch.setattr(store_module.settings, "job_ttl_seconds", 60)

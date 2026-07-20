@@ -137,6 +137,15 @@ X-API-Key: changeme
 
 Returns `204` on success. Returns `404` if the job doesn't exist, or `409` if the job is still active (`pending` or `running`) — cancel it first.
 
+### Purge finished scans
+
+```
+DELETE /scans
+X-API-Key: changeme
+```
+
+Deletes every job in a terminal state (`completed`, `failed`, `cancelled`) in one call and returns `200` with `{"deleted": <count>}`. Active jobs (`pending`, `running`) are left untouched. Handy for reclaiming capacity after a `429`.
+
 ## curl Examples
 
 All examples assume the service is running at `http://localhost:8000` with the default API key.
@@ -181,6 +190,13 @@ curl -s -X POST http://localhost:8000/scans/<job_id>/cancel \
 
 ```bash
 curl -s -X DELETE http://localhost:8000/scans/<job_id> \
+  -H "X-API-Key: changeme"
+```
+
+### Purge all finished scans
+
+```bash
+curl -s -X DELETE http://localhost:8000/scans \
   -H "X-API-Key: changeme"
 ```
 
@@ -244,7 +260,7 @@ The client submits a scan, gets a job ID immediately, and polls for results whil
 | `app/validation.py` | Validates `targets`/`ports` and enforces the nmap `arguments` allowlist |
 | `app/store.py` | Thread-safe in-memory `JobStore` (dict + lock) with a job cap and TTL eviction of finished jobs |
 | `app/scanner.py` | Core engine; runs blocking `python-nmap` scans in a `ThreadPoolExecutor` |
-| `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, `GET /scans`, `POST /scans/{job_id}/cancel`, `DELETE /scans/{job_id}` endpoints |
+| `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, `GET /scans`, `DELETE /scans` (purge finished), `POST /scans/{job_id}/cancel`, `DELETE /scans/{job_id}` endpoints |
 
 ## Testing
 

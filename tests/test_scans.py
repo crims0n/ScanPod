@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -192,3 +193,42 @@ async def test_create_scan_returns_429_at_capacity(
         )
     assert first.status_code == 202
     assert second.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_purge_scans_removes_finished_only(client: AsyncClient, api_key: str):
+    now = datetime.now(timezone.utc)
+    active = _seed_job(JobStatus.running)
+    _seed_job(JobStatus.completed, completed_at=now, result=ScanResult(hosts=[]))
+    _seed_job(JobStatus.failed, completed_at=now, error="boom")
+
+    resp = await client.delete("/scans", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    assert resp.json() == {"deleted": 2}
+
+    listing = await client.get("/scans", headers={"X-API-Key": api_key})
+    remaining = [j["job_id"] for j in listing.json()]
+    assert remaining == [active]
+
+
+@pytest.mark.asyncio
+async def test_purge_scans_frees_capacity(client: AsyncClient, api_key: str, monkeypatch):
+    monkeypatch.setattr("app.store.settings.max_jobs", 1)
+    monkeypatch.setattr("app.store.settings.job_ttl_seconds", 0)
+    now = datetime.now(timezone.utc)
+    _seed_job(JobStatus.completed, completed_at=now)
+
+    # Store is full; a new scan is rejected...
+    with patch("app.scanner.nmap.PortScanner", return_value=_fake_port_scanner()):
+        rejected = await client.post(
+            "/scans", json={"targets": "127.0.0.1"}, headers={"X-API-Key": api_key}
+        )
+    assert rejected.status_code == 429
+
+    # ...until we purge, then it succeeds.
+    await client.delete("/scans", headers={"X-API-Key": api_key})
+    with patch("app.scanner.nmap.PortScanner", return_value=_fake_port_scanner()):
+        accepted = await client.post(
+            "/scans", json={"targets": "127.0.0.1"}, headers={"X-API-Key": api_key}
+        )
+    assert accepted.status_code == 202

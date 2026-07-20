@@ -22,7 +22,7 @@ async def create_scan(req: ScanRequest) -> ScanJobCreated:
         logger.warning("Scan job rejected — store at capacity")
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Job store is at capacity — delete finished jobs or wait for retention to expire",
+            detail="Job store is at capacity — purge finished jobs (DELETE /scans) or wait for retention to expire",
         )
     submit_scan(job)
     logger.info("Scan job %s created for targets=%s", job.job_id, req.targets)
@@ -51,6 +51,14 @@ async def list_scans() -> list[ScanJobSummary]:
         ScanJobSummary(job_id=job.job_id, status=job.status)
         for job in job_store.list_all()
     ]
+
+
+@router.delete("")
+async def purge_scans() -> dict:
+    """Delete all finished (completed/failed/cancelled) jobs; leaves active jobs."""
+    deleted = job_store.clear_terminal()
+    logger.info("Purged %d finished job(s)", deleted)
+    return {"deleted": deleted}
 
 
 @router.post("/{job_id}/cancel", response_model=ScanJobStatus)

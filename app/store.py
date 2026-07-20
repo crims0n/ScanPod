@@ -92,6 +92,21 @@ class JobStore:
             del self._jobs[job_id]
             return True
 
+    def clear_terminal(self) -> int:
+        """Delete all jobs in a terminal state. Returns the number removed.
+
+        Pending and running jobs are left untouched.
+        """
+        with self._lock:
+            terminal = [
+                job_id
+                for job_id, job in self._jobs.items()
+                if job.status in _TERMINAL
+            ]
+            for job_id in terminal:
+                del self._jobs[job_id]
+            return len(terminal)
+
     def list_all(self) -> list[ScanJobStatus]:
         with self._lock:
             self._evict_expired_locked()
