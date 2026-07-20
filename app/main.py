@@ -18,6 +18,12 @@ def configure_logging() -> None:
     root = logging.getLogger()
     root.setLevel(settings.log_level.upper())
 
+    # Clear any handlers from a previous call so repeated imports/reloads
+    # don't stack duplicate handlers and log every line multiple times.
+    for handler in root.handlers[:]:
+        root.removeHandler(handler)
+        handler.close()
+
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
     root.addHandler(stream_handler)

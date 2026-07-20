@@ -3,11 +3,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import require_api_key
-
-logger = logging.getLogger(__name__)
 from app.models import ScanJobCreated, ScanJobStatus, ScanJobSummary, ScanRequest, new_job
 from app.scanner import submit_scan
 from app.store import job_store
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/scans",
