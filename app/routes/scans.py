@@ -18,7 +18,12 @@ router = APIRouter(
 @router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=ScanJobCreated)
 async def create_scan(req: ScanRequest) -> ScanJobCreated:
     job = new_job(req)
-    job_store.add(job)
+    if not job_store.add(job):
+        logger.warning("Scan job rejected — store at capacity")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Job store is at capacity — delete finished jobs or wait for retention to expire",
+        )
     submit_scan(job)
     logger.info("Scan job %s created for targets=%s", job.job_id, req.targets)
     return ScanJobCreated(

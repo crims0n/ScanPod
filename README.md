@@ -41,6 +41,8 @@ Set environment variables with the `SCANPOD_` prefix, or create a `.env` file (s
 | `SCANPOD_SCAN_TIMEOUT`    | `900`      | nmap scan timeout in seconds (server-wide default) |
 | `SCANPOD_MAX_SCAN_WORKERS`| `4`        | Max concurrent background scans    |
 | `SCANPOD_ALLOW_UNSAFE_ARGS`| `false`   | Bypass the nmap argument allowlist (see [Input validation](#input-validation)) |
+| `SCANPOD_MAX_JOBS`        | `1000`     | Max jobs retained in memory; further submissions get `429`. `0` = unlimited |
+| `SCANPOD_JOB_TTL_SECONDS` | `3600`     | Seconds a finished job is retained before eviction. `0` = keep forever |
 | `SCANPOD_LOG_LEVEL`       | `INFO`     | Python log level (DEBUG, INFO, WARNING, etc.) |
 | `SCANPOD_LOG_FILE`        | _(empty)_  | Path to log file; empty = stdout only |
 
@@ -216,7 +218,7 @@ curl -s -X DELETE http://localhost:8000/scans/$JOB_ID \
 A few other things to be aware of as load increases:
 
 - **File descriptors**: each nmap subprocess opens raw sockets. Default OS limits (256 on macOS, 1024 on Linux) can become tight with wide port scans across several workers.
-- **Memory**: completed job results are retained in memory indefinitely with no eviction or TTL. On long-running deployments with large scan results, heap usage will grow unbounded until the process is restarted.
+- **Memory**: finished job results are held in memory, but growth is bounded by two knobs. `SCANPOD_JOB_TTL_SECONDS` (default 1 hour) evicts terminal jobs a fixed time after they finish, and `SCANPOD_MAX_JOBS` (default 1000) caps total retained jobs — submissions past the cap are rejected with `429`. Set either to `0` to disable it. Eviction is lazy (swept on the next store access), so fetch results before they age out.
 
 ## Logging
 
@@ -240,7 +242,7 @@ The client submits a scan, gets a job ID immediately, and polls for results whil
 | `app/auth.py` | `require_api_key()` dependency that validates the `X-API-Key` header |
 | `app/models.py` | Pydantic schemas for requests, results, and job status (pending, running, completed, failed, cancelled) |
 | `app/validation.py` | Validates `targets`/`ports` and enforces the nmap `arguments` allowlist |
-| `app/store.py` | Thread-safe in-memory `JobStore` backed by a dict and threading lock |
+| `app/store.py` | Thread-safe in-memory `JobStore` (dict + lock) with a job cap and TTL eviction of finished jobs |
 | `app/scanner.py` | Core engine; runs blocking `python-nmap` scans in a `ThreadPoolExecutor` |
 | `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, `GET /scans`, `POST /scans/{job_id}/cancel`, `DELETE /scans/{job_id}` endpoints |
 

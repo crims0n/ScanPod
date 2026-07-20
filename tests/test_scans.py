@@ -175,3 +175,20 @@ async def test_cancel_already_cancelled_job_is_409(client: AsyncClient, api_key:
 async def test_cancel_unknown_job_is_404(client: AsyncClient, api_key: str):
     resp = await client.post("/scans/nonexistent/cancel", headers={"X-API-Key": api_key})
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_scan_returns_429_at_capacity(
+    client: AsyncClient, api_key: str, monkeypatch
+):
+    monkeypatch.setattr("app.store.settings.max_jobs", 1)
+    monkeypatch.setattr("app.store.settings.job_ttl_seconds", 0)
+    with patch("app.scanner.nmap.PortScanner", return_value=_fake_port_scanner()):
+        first = await client.post(
+            "/scans", json={"targets": "127.0.0.1"}, headers={"X-API-Key": api_key}
+        )
+        second = await client.post(
+            "/scans", json={"targets": "127.0.0.1"}, headers={"X-API-Key": api_key}
+        )
+    assert first.status_code == 202
+    assert second.status_code == 429

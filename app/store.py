@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from app.config import settings
 from app.models import JobStatus, ScanJobStatus
+
+logger = logging.getLogger(__name__)
+
+_TERMINAL = (JobStatus.completed, JobStatus.failed, JobStatus.cancelled)
 
 
 class JobStore:
@@ -12,12 +18,36 @@ class JobStore:
         self._lock = threading.Lock()
         self._jobs: dict[str, ScanJobStatus] = {}
 
-    def add(self, job: ScanJobStatus) -> None:
+    def _evict_expired_locked(self) -> None:
+        """Drop terminal jobs older than the TTL. Assumes the lock is held."""
+        ttl = settings.job_ttl_seconds
+        if ttl <= 0:
+            return
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=ttl)
+        expired = [
+            job_id
+            for job_id, job in self._jobs.items()
+            if job.status in _TERMINAL
+            and job.completed_at is not None
+            and job.completed_at < cutoff
+        ]
+        for job_id in expired:
+            del self._jobs[job_id]
+        if expired:
+            logger.info("Evicted %d expired job(s) past TTL", len(expired))
+
+    def add(self, job: ScanJobStatus) -> bool:
+        """Store a new job. Returns False if the store is at capacity."""
         with self._lock:
+            self._evict_expired_locked()
+            if settings.max_jobs > 0 and len(self._jobs) >= settings.max_jobs:
+                return False
             self._jobs[job.job_id] = job
+            return True
 
     def get(self, job_id: str) -> Optional[ScanJobStatus]:
         with self._lock:
+            self._evict_expired_locked()
             return self._jobs.get(job_id)
 
     def update(self, job: ScanJobStatus) -> bool:
@@ -64,6 +94,7 @@ class JobStore:
 
     def list_all(self) -> list[ScanJobStatus]:
         with self._lock:
+            self._evict_expired_locked()
             return list(self._jobs.values())
 
 
