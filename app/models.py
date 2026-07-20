@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.validation import validate_arguments, validate_ports, validate_targets
 
 
 # --- Request ---
@@ -15,6 +17,21 @@ class ScanRequest(BaseModel):
     ports: Optional[str] = None
     arguments: Optional[str] = None
     timeout: Optional[int] = None
+
+    @field_validator("targets")
+    @classmethod
+    def _check_targets(cls, v: str) -> str:
+        return validate_targets(v)
+
+    @field_validator("ports")
+    @classmethod
+    def _check_ports(cls, v: Optional[str]) -> Optional[str]:
+        return validate_ports(v)
+
+    @field_validator("arguments")
+    @classmethod
+    def _check_arguments(cls, v: Optional[str]) -> Optional[str]:
+        return validate_arguments(v)
 
 
 # --- Result hierarchy ---

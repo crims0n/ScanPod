@@ -17,6 +17,14 @@ ScanPod is a containerized FastAPI service for distributed Nmap orchestration. S
 
 At the moment, https is not supported. **DO NOT** deploy these agents on the public internet. Although the endpoint supports API authentication, without https the data is sent in cleartext and potentially interceptable.
 
+### Input validation
+
+`targets`, `ports`, and `arguments` are validated before a scan is created — invalid requests are rejected with `422` and never reach nmap. This prevents the raw request fields from smuggling extra nmap flags that could read or write arbitrary files or execute NSE scripts.
+
+`arguments` is checked against an **allowlist** of safe nmap flags (scan techniques, host discovery, timing, verbosity, and OS/service detection). Flags that touch the filesystem or run scripts — `-oN`/`-oG`, `-iL`, `--script`, `-sC`, `-A`, `--datadir`, and the like — are rejected.
+
+If you fully trust every caller and need the complete nmap surface, set `SCANPOD_ALLOW_UNSAFE_ARGS=true` to bypass the `arguments` allowlist. Target and port validation still applies. Leave this off unless you understand the risk.
+
 ## Installation
 
 ```bash
@@ -32,6 +40,7 @@ Set environment variables with the `SCANPOD_` prefix, or create a `.env` file (s
 | `SCANPOD_API_KEY`         | `changeme` | API key for `X-API-Key` header     |
 | `SCANPOD_SCAN_TIMEOUT`    | `900`      | nmap scan timeout in seconds (server-wide default) |
 | `SCANPOD_MAX_SCAN_WORKERS`| `4`        | Max concurrent background scans    |
+| `SCANPOD_ALLOW_UNSAFE_ARGS`| `false`   | Bypass the nmap argument allowlist (see [Input validation](#input-validation)) |
 | `SCANPOD_LOG_LEVEL`       | `INFO`     | Python log level (DEBUG, INFO, WARNING, etc.) |
 | `SCANPOD_LOG_FILE`        | _(empty)_  | Path to log file; empty = stdout only |
 
@@ -230,6 +239,7 @@ The client submits a scan, gets a job ID immediately, and polls for results whil
 | `app/config.py` | Pydantic `Settings` class reading `SCANPOD_`-prefixed env vars |
 | `app/auth.py` | `require_api_key()` dependency that validates the `X-API-Key` header |
 | `app/models.py` | Pydantic schemas for requests, results, and job status (pending, running, completed, failed, cancelled) |
+| `app/validation.py` | Validates `targets`/`ports` and enforces the nmap `arguments` allowlist |
 | `app/store.py` | Thread-safe in-memory `JobStore` backed by a dict and threading lock |
 | `app/scanner.py` | Core engine; runs blocking `python-nmap` scans in a `ThreadPoolExecutor` |
 | `app/routes/scans.py` | `POST /scans`, `GET /scans/{job_id}`, `GET /scans`, `POST /scans/{job_id}/cancel`, `DELETE /scans/{job_id}` endpoints |
