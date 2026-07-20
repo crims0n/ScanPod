@@ -1,3 +1,4 @@
+import hmac
 import logging
 
 from fastapi import Security, HTTPException, status
@@ -13,7 +14,9 @@ _api_key_header = APIKeyHeader(name="X-API-Key")
 async def require_api_key(
     api_key: str = Security(_api_key_header),
 ) -> str:
-    if api_key != settings.api_key:
+    # Constant-time compare so response timing doesn't leak how much of the
+    # key matched.
+    if not hmac.compare_digest(api_key, settings.api_key):
         logger.warning("Unauthorized request — invalid API key")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

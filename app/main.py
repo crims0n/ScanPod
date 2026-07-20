@@ -36,6 +36,11 @@ configure_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("ScanPod started")
+    if settings.api_key == "changeme":
+        logger.warning(
+            "SCANPOD_API_KEY is set to the default 'changeme' — the service is "
+            "effectively unauthenticated. Set SCANPOD_API_KEY to a strong secret."
+        )
     yield
 
 
