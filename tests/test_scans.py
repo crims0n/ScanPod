@@ -3,7 +3,23 @@ from unittest.mock import MagicMock, patch
 import pytest
 from httpx import AsyncClient
 
-from app.models import JobStatus
+from app.models import (
+    HostResult,
+    JobStatus,
+    ScanRequest,
+    ScanResult,
+    new_job,
+)
+from app.store import job_store
+
+
+def _seed_job(status: JobStatus, **updates):
+    """Add a job in a given state directly to the store, bypassing the scanner."""
+    job = new_job(ScanRequest(targets="127.0.0.1"))
+    if status is not JobStatus.pending or updates:
+        job = job.model_copy(update={"status": status, **updates})
+    job_store.add(job)
+    return job.job_id
 
 
 def _fake_port_scanner():
@@ -110,3 +126,52 @@ async def test_scan_completes_with_results(client: AsyncClient, api_key: str):
     assert len(body["result"]["hosts"]) == 1
     assert body["result"]["hosts"][0]["host"] == "127.0.0.1"
     assert len(body["result"]["hosts"][0]["ports"]) == 2
+
+
+# --- cancel semantics ---
+
+@pytest.mark.asyncio
+async def test_cancel_pending_job(client: AsyncClient, api_key: str):
+    job_id = _seed_job(JobStatus.pending)
+    resp = await client.post(f"/scans/{job_id}/cancel", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == JobStatus.cancelled
+
+
+@pytest.mark.asyncio
+async def test_cancel_completed_job_is_409_and_preserves_result(
+    client: AsyncClient, api_key: str
+):
+    result = ScanResult(hosts=[HostResult(host="127.0.0.1", state="up")])
+    job_id = _seed_job(JobStatus.completed, result=result)
+
+    resp = await client.post(f"/scans/{job_id}/cancel", headers={"X-API-Key": api_key})
+    assert resp.status_code == 409
+    # Message uses the plain status value, not the enum repr.
+    assert "'completed'" in resp.json()["detail"]
+
+    # The completed result must survive an attempted cancel.
+    detail = await client.get(f"/scans/{job_id}", headers={"X-API-Key": api_key})
+    body = detail.json()
+    assert body["status"] == JobStatus.completed
+    assert body["result"]["hosts"][0]["host"] == "127.0.0.1"
+
+
+@pytest.mark.asyncio
+async def test_cancel_failed_job_is_409(client: AsyncClient, api_key: str):
+    job_id = _seed_job(JobStatus.failed, error="boom")
+    resp = await client.post(f"/scans/{job_id}/cancel", headers={"X-API-Key": api_key})
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_cancel_already_cancelled_job_is_409(client: AsyncClient, api_key: str):
+    job_id = _seed_job(JobStatus.cancelled)
+    resp = await client.post(f"/scans/{job_id}/cancel", headers={"X-API-Key": api_key})
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_cancel_unknown_job_is_404(client: AsyncClient, api_key: str):
+    resp = await client.post("/scans/nonexistent/cancel", headers={"X-API-Key": api_key})
+    assert resp.status_code == 404
